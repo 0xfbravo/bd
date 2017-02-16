@@ -1,7 +1,7 @@
 /*
   Script de Importação e Normalização - AA Banco de Dados
   UFRRJ - 2016.2
-  Professor: Luiz Fernando Orleans
+  Professor: Luís Fernando Orleans
   Alunos: Bianca Albuquerque e Fellipe Pimentel
 */
 
@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS diarias_normalizadas.Orgao_Subordinado (
 CREATE TABLE IF NOT EXISTS diarias_normalizadas.Unidade_Gestora (
 		Codigo_Unidade_Gestora VARCHAR NOT NULL PRIMARY KEY,
 		Nome_Unidade_Gestora VARCHAR NOT NULL,
-		Gestao_Pagamento VARCHAR NOT NULL
+		Gestao_Pagamento VARCHAR NOT NULL,
+    Orgao_Subordinado VARCHAR NOT NULL REFERENCES diarias_normalizadas.Orgao_Subordinado (Codigo_Orgao_Subordinado)
 );
 CREATE TABLE IF NOT EXISTS diarias_normalizadas.Funcao (
 		Codigo_Funcao VARCHAR NOT NULL PRIMARY KEY,
@@ -76,7 +77,6 @@ CREATE TABLE IF NOT EXISTS diarias_normalizadas.Favorecido (
 		Nome_Favorecido VARCHAR NOT NULL
 );
 CREATE TABLE IF NOT EXISTS diarias_normalizadas.Pagamentos (
-		Orgao VARCHAR NOT NULL REFERENCES diarias_normalizadas.Orgao_Subordinado (Codigo_Orgao_Subordinado),
 		Subfuncao VARCHAR NOT NULL REFERENCES diarias_normalizadas.Subfuncao (Codigo_Subfuncao),
 		Funcao VARCHAR NOT NULL REFERENCES diarias_normalizadas.Funcao (Codigo_Funcao),
 		Acao VARCHAR NOT NULL REFERENCES diarias_normalizadas.Acao (Codigo_Acao),
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS diarias_normalizadas.Pagamentos (
 -- Populando Tabelas Normalizadas
 INSERT INTO diarias_normalizadas.Orgao_Superior SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Orgao_Superior, diarias_nao_normalizadas.Diarias.Nome_Orgao_Superior FROM diarias_nao_normalizadas.Diarias;
 INSERT INTO diarias_normalizadas.Orgao_Subordinado SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Orgao_Subordinado, diarias_nao_normalizadas.Diarias.Nome_Orgao_Subordinado , diarias_nao_normalizadas.Diarias.Codigo_Orgao_Superior FROM diarias_nao_normalizadas.Diarias;
-INSERT INTO diarias_normalizadas.Unidade_Gestora SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Unidade_Gestora, diarias_nao_normalizadas.Diarias.Nome_Unidade_Gestora , diarias_nao_normalizadas.Diarias.Gestao_Pagamento FROM diarias_nao_normalizadas.Diarias;
+INSERT INTO diarias_normalizadas.Unidade_Gestora SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Unidade_Gestora, diarias_nao_normalizadas.Diarias.Nome_Unidade_Gestora , diarias_nao_normalizadas.Diarias.Gestao_Pagamento , diarias_nao_normalizadas.Diarias.Codigo_Orgao_Subordinado FROM diarias_nao_normalizadas.Diarias;
 INSERT INTO diarias_normalizadas.Funcao SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Funcao, diarias_nao_normalizadas.Diarias.Nome_Funcao  FROM diarias_nao_normalizadas.Diarias;
 INSERT INTO diarias_normalizadas.Subfuncao SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Subfuncao, diarias_nao_normalizadas.Diarias.Nome_Subfuncao  FROM diarias_nao_normalizadas.Diarias;
 INSERT INTO diarias_normalizadas.Programa SELECT DISTINCT diarias_nao_normalizadas.Diarias.Codigo_Programa, diarias_nao_normalizadas.Diarias.nome_Programa FROM diarias_nao_normalizadas.Diarias;
@@ -101,7 +101,6 @@ INSERT INTO diarias_normalizadas.Favorecido (CPF_Favorecido,Nome_Favorecido) SEL
 INSERT INTO diarias_normalizadas.Pagamentos
 	(Orgao, Subfuncao, Funcao, Acao, Programa, Favorecido, Unidade_Gestora, Data_Pagamento, Documento_Pagamento, Valor_Pagamento)
     SELECT DISTINCT
-    	diarias_nao_normalizadas.Diarias.Codigo_Orgao_Subordinado,
         diarias_nao_normalizadas.Diarias.Codigo_Subfuncao,
         diarias_nao_normalizadas.Diarias.Codigo_Funcao,
         diarias_nao_normalizadas.Diarias.Codigo_Acao,
@@ -130,11 +129,13 @@ SELECT Nome_Favorecido
 		pags.Valor_Pagamento = (SELECT MAX(pags.Valor_Pagamento) FROM diarias_normalizadas.Pagamentos pags);
 -- Query 2: O valor total gasto pelo Ministério do Planejamento com diárias
 SELECT sum(pags.Valor_Pagamento)
-	FROM diarias_normalizadas.Pagamentos pags, diarias_normalizadas.Orgao_Subordinado orgaoSub, diarias_normalizadas.Orgao_Superior orgaoSup
+	FROM diarias_normalizadas.Pagamentos pags, diarias_normalizadas.Unidade_Gestora ug, diarias_normalizadas.Orgao_Subordinado orgaoSub, diarias_normalizadas.Orgao_Superior orgaoSup
 	WHERE
 		orgaoSup.Nome_Orgao_Superior LIKE '%MINISTERIO DO PLANEJAMENTO%'
 		AND
-		pags.Orgao = orgaoSub.Codigo_Orgao_Subordinado
+		pags.Unidade_Gestora = ug.Codigo_Unidade_Gestora
+    AND
+    ug.Orgao_Subordinado = orgaoSub.Codigo_Orgao_Subordinado
 		AND
 		orgaoSub.Orgao_Superior = orgaoSup.Codigo_Orgao_Superior;
 -- Query 3: As pessoas que tiveram mais do que 5 pagamentos
@@ -179,7 +180,7 @@ diarias_normalizadas.Acao a,
 diarias_normalizadas.Media m,
 diarias_normalizadas.Pagamentos pags
 WHERE OSup.Codigo_Orgao_Superior = OSub.Orgao_Superior
-AND OSub.Codigo_Orgao_Subordinado = pags.Orgao
+AND OSub.Codigo_Orgao_Subordinado = UG.Orgao_Subordinado
 AND pags.Unidade_Gestora = UG.Codigo_Unidade_Gestora
 AND pags.Funcao = f.Codigo_Funcao
 AND pags.Subfuncao = s.Codigo_Subfuncao
