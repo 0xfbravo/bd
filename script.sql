@@ -1,7 +1,7 @@
 /*
   Script de Importação e Normalização - AA Banco de Dados
   UFRRJ - 2016.2
-  Professor: Luiz Fernando Orleans
+  Professor: Luís Fernando Orleans
   Alunos: Bianca Albuquerque e Fellipe Pimentel
 */
 
